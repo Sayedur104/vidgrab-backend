@@ -180,8 +180,8 @@
     </main>
 
     <script>
-        // ✅✅✅ IMPORTANT: আপনার Render URL এখানে বসান ✅✅✅
-        const API_URL = 'https://vidgrab-backend.onrender.com'; // ← এখানে আপনার URL দিন
+        // ✅ SAME DOMAIN - CORS error fix
+        const API_URL = '';  // Empty = same origin
         
         let currentFormat = 'video';
         let selectedQuality = '720p';
@@ -202,7 +202,6 @@
                 return;
             }
 
-            // Facebook check
             if (url.includes('facebook.com') || url.includes('fb.watch')) {
                 showError('⚠️ Facebook ভিডিও বর্তমানে সাপোর্টেড নয়। YouTube ব্যবহার করুন।');
                 return;
@@ -213,9 +212,7 @@
             document.getElementById('errorMessage').classList.add('hidden');
 
             try {
-                console.log('Fetching:', `${API_URL}/api/info`); // Debug log
-                
-                const response = await fetch(`${API_URL}/api/info`, {
+                const response = await fetch(`/api/info`, {  // ✅ Same domain
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
@@ -224,16 +221,12 @@
                     body: JSON.stringify({ url })
                 });
 
-                console.log('Response status:', response.status); // Debug log
-
                 if (!response.ok) {
                     const text = await response.text();
-                    console.error('Error response:', text);
                     throw new Error(`Server error: ${response.status}`);
                 }
 
                 const data = await response.json();
-                console.log('Response data:', data); // Debug log
                 
                 if (!data.success) throw new Error(data.error);
 
@@ -257,7 +250,6 @@
             document.getElementById('duration').textContent = formatDuration(data.duration);
             document.getElementById('platformBadge').textContent = data.platform || 'Video';
 
-            // Video qualities
             const qualityGrid = document.getElementById('qualityGrid');
             qualityGrid.innerHTML = '';
             
@@ -274,7 +266,6 @@
                 qualityGrid.appendChild(btn);
             });
 
-            // Audio qualities
             const audioGrid = document.getElementById('audioGrid');
             audioGrid.innerHTML = '';
             
@@ -358,7 +349,7 @@
             document.getElementById('successSection').classList.add('hidden');
 
             try {
-                const response = await fetch(`${API_URL}/api/download`, {
+                const response = await fetch(`/api/download`, {  // ✅ Same domain
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -372,7 +363,6 @@
                 
                 if (!data.success) throw new Error(data.error);
 
-                // Progress animation
                 let progress = 0;
                 const interval = setInterval(() => {
                     progress += 10;
@@ -398,7 +388,7 @@
             document.getElementById('successSection').classList.remove('hidden');
             
             const link = document.getElementById('downloadLink');
-            link.href = API_URL + data.download_url;
+            link.href = data.download_url;  // ✅ Same domain
             
             setTimeout(() => link.click(), 500);
             setTimeout(resetButton, 5000);
