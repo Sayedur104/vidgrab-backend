@@ -1,6 +1,6 @@
 """
 VidGrab - Video Downloader API
-YouTube, Facebook, Instagram supported
+YouTube, Instagram, Twitter supported
 """
 
 from flask import Flask, request, jsonify, send_file, render_template
@@ -57,9 +57,19 @@ def get_video_info():
         if not url:
             return jsonify({'success': False, 'error': 'No URL provided'}), 400
 
+        # yt-dlp options
         ydl_opts = {
             'quiet': True,
             'no_warnings': True,
+            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'referer': 'https://www.youtube.com/',
+            'headers': {
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.5',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'DNT': '1',
+                'Connection': 'keep-alive',
+            }
         }
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -81,6 +91,7 @@ def get_video_info():
                             'ext': f['ext']
                         })
             
+            # Sort by quality
             formats.sort(key=lambda x: x['height'], reverse=True)
             
             return jsonify({
@@ -95,7 +106,11 @@ def get_video_info():
             })
             
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        print(f"Error in get_video_info: {str(e)}")
+        return jsonify({
+            'success': False, 
+            'error': f'Failed to extract video info: {str(e)}'
+        }), 500
 
 @app.route('/api/download', methods=['POST'])
 def download_video():
@@ -109,13 +124,17 @@ def download_video():
         if not url:
             return jsonify({'success': False, 'error': 'No URL provided'}), 400
 
-        # Get video info
-        ydl_opts_info = {'quiet': True}
+        # Get video info first
+        ydl_opts_info = {
+            'quiet': True,
+            'no_warnings': True,
+        }
+        
         with yt_dlp.YoutubeDL(ydl_opts_info) as ydl:
             info = ydl.extract_info(url, download=False)
             title = sanitize_filename(info['title'])
         
-        # Set filename
+        # Set filename and options
         if download_format == 'audio':
             filename_base = f"{title}_audio"
             ydl_opts = {
@@ -127,6 +146,7 @@ def download_video():
                     'preferredquality': quality.replace('kbps', ''),
                 }],
                 'quiet': True,
+                'no_warnings': True,
             }
             final_ext = 'mp3'
         else:
@@ -137,6 +157,7 @@ def download_video():
                 'outtmpl': os.path.join(DOWNLOAD_FOLDER, f'{filename_base}.%(ext)s'),
                 'merge_output_format': 'mp4',
                 'quiet': True,
+                'no_warnings': True,
             }
             final_ext = 'mp4'
         
@@ -163,7 +184,11 @@ def download_video():
         })
         
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        print(f"Error in download_video: {str(e)}")
+        return jsonify({
+            'success': False, 
+            'error': f'Download failed: {str(e)}'
+        }), 500
 
 @app.route('/api/file/<filename>')
 def serve_file(filename):
@@ -176,7 +201,17 @@ def serve_file(filename):
         return send_file(file_path, as_attachment=True)
         
     except Exception as e:
+        print(f"Error in serve_file: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/health')
+def health_check():
+    """Health check endpoint"""
+    return jsonify({
+        'status': 'OK',
+        'timestamp': time.time(),
+        'downloads_folder': os.path.exists(DOWNLOAD_FOLDER)
+    })
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
