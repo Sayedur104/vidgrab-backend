@@ -8,28 +8,16 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap');
-        
-        body {
-            font-family: 'Hind Siliguri', sans-serif;
-        }
-        
+        body { font-family: 'Hind Siliguri', sans-serif; }
         .gradient-text {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
-        
-        .glass-effect {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        
         .quality-btn.active {
             background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
             color: white;
         }
-        
         .loading-spinner {
             border: 3px solid rgba(255,255,255,0.3);
             border-radius: 50%;
@@ -38,7 +26,6 @@
             height: 24px;
             animation: spin 1s linear infinite;
         }
-        
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
@@ -63,9 +50,6 @@
                     </div>
                     <h1 class="text-2xl font-bold gradient-text">VidGrab</h1>
                 </div>
-                <a href="https://github.com/tomar-username/vidgrab-backend" target="_blank" class="text-gray-400 hover:text-white transition">
-                    <i class="fab fa-github text-2xl"></i>
-                </a>
             </div>
         </div>
     </nav>
@@ -78,11 +62,11 @@
             <h2 class="text-4xl md:text-5xl font-bold mb-4">
                 যেকোনো ভিডিও <span class="gradient-text">ডাউনলোড করুন</span>
             </h2>
-            <p class="text-gray-400 text-lg">YouTube, Facebook, Instagram, Twitter সহ ১০০০+ সাইট</p>
+            <p class="text-gray-400 text-lg">YouTube, Instagram, Twitter সহ ১০০০+ সাইট</p>
         </div>
 
         <!-- Input -->
-        <div class="glass-effect rounded-2xl p-2 mb-8">
+        <div class="bg-gray-800/50 backdrop-blur-lg border border-gray-700 rounded-2xl p-2 mb-8">
             <div class="flex gap-2">
                 <div class="flex-1 relative">
                     <i class="fas fa-link absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
@@ -117,7 +101,7 @@
         </div>
 
         <!-- Video Preview -->
-        <div id="videoPreview" class="hidden glass-effect rounded-3xl overflow-hidden">
+        <div id="videoPreview" class="hidden bg-gray-800/50 backdrop-blur-lg border border-gray-700 rounded-3xl overflow-hidden">
             <div class="grid md:grid-cols-2 gap-0">
                 
                 <!-- Thumbnail -->
@@ -143,7 +127,7 @@
                     </div>
 
                     <!-- Format Toggle -->
-                    <div class="bg-gray-800 p-1 rounded-xl flex relative">
+                    <div class="bg-gray-700/50 p-1 rounded-xl flex relative">
                         <div id="toggleBg" class="absolute w-1/2 h-full bg-gray-600 rounded-lg transition-all duration-300 left-0"></div>
                         <button onclick="setFormat('video')" id="videoTab" class="flex-1 relative z-10 py-3 rounded-lg text-white font-medium flex items-center justify-center gap-2">
                             <i class="fas fa-video"></i> ভিডিও
@@ -195,13 +179,9 @@
         </div>
     </main>
 
-    <!-- Footer -->
-    <footer class="relative z-10 border-t border-gray-800 mt-20 py-8 text-center text-gray-500">
-        <p>© ২০২৪ VidGrab | <a href="https://github.com/tomar-username/vidgrab-backend" class="text-indigo-400 hover:text-indigo-300">GitHub</a></p>
-    </footer>
-
     <script>
-        const API_URL = window.location.origin;
+        // ✅✅✅ IMPORTANT: আপনার Render URL এখানে বসান ✅✅✅
+        const API_URL = 'https://vidgrab-backend.onrender.com'; // ← এখানে আপনার URL দিন
         
         let currentFormat = 'video';
         let selectedQuality = '720p';
@@ -222,19 +202,38 @@
                 return;
             }
 
+            // Facebook check
+            if (url.includes('facebook.com') || url.includes('fb.watch')) {
+                showError('⚠️ Facebook ভিডিও বর্তমানে সাপোর্টেড নয়। YouTube ব্যবহার করুন।');
+                return;
+            }
+
             document.getElementById('loadingState').classList.remove('hidden');
             document.getElementById('videoPreview').classList.add('hidden');
             document.getElementById('errorMessage').classList.add('hidden');
-            document.getElementById('successSection').classList.add('hidden');
 
             try {
+                console.log('Fetching:', `${API_URL}/api/info`); // Debug log
+                
                 const response = await fetch(`${API_URL}/api/info`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
                     body: JSON.stringify({ url })
                 });
 
+                console.log('Response status:', response.status); // Debug log
+
+                if (!response.ok) {
+                    const text = await response.text();
+                    console.error('Error response:', text);
+                    throw new Error(`Server error: ${response.status}`);
+                }
+
                 const data = await response.json();
+                console.log('Response data:', data); // Debug log
                 
                 if (!data.success) throw new Error(data.error);
 
@@ -245,25 +244,28 @@
                 document.getElementById('videoPreview').classList.remove('hidden');
                 
             } catch (error) {
-                showError(error.message || 'ভিডিও তথ্য আনতে ব্যর্থ');
+                console.error('Error:', error);
+                showError('সার্ভারে যোগাযোগ করা যাচ্ছে না। URL ঠিক আছে কিনা চেক করুন।');
                 document.getElementById('loadingState').classList.add('hidden');
             }
         }
 
         function displayVideoInfo(data) {
-            document.getElementById('videoTitle').textContent = data.title;
-            document.getElementById('videoAuthor').innerHTML = `<i class="fas fa-user-circle mr-1"></i> ${data.uploader}`;
-            document.getElementById('thumbnail').src = data.thumbnail;
+            document.getElementById('videoTitle').textContent = data.title || 'Unknown';
+            document.getElementById('videoAuthor').innerHTML = `<i class="fas fa-user-circle mr-1"></i> ${data.uploader || 'Unknown'}`;
+            document.getElementById('thumbnail').src = data.thumbnail || '';
             document.getElementById('duration').textContent = formatDuration(data.duration);
-            document.getElementById('platformBadge').textContent = data.platform;
+            document.getElementById('platformBadge').textContent = data.platform || 'Video';
 
             // Video qualities
             const qualityGrid = document.getElementById('qualityGrid');
             qualityGrid.innerHTML = '';
             
             const qualities = ['360p', '480p', '720p', '1080p'];
+            const availableQualities = data.formats ? data.formats.map(f => f.quality) : [];
+            
             qualities.forEach(q => {
-                const available = data.formats.some(f => f.quality === q);
+                const available = availableQualities.includes(q);
                 const btn = document.createElement('button');
                 btn.className = `quality-btn py-2 px-3 rounded-lg border border-gray-600 text-sm font-medium transition-all ${available ? '' : 'opacity-50 cursor-not-allowed'} ${q === '720p' ? 'active' : ''}`;
                 btn.textContent = q;
@@ -360,7 +362,7 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        url: videoData.webpage_url,
+                        url: videoData.webpage_url || videoData.url,
                         format: currentFormat,
                         quality: currentFormat === 'video' ? selectedQuality : selectedAudioQuality + 'kbps'
                     })
@@ -373,31 +375,19 @@
                 // Progress animation
                 let progress = 0;
                 const interval = setInterval(() => {
-                    progress += Math.random() * 15;
+                    progress += 10;
                     if (progress > 90) progress = 90;
                     document.getElementById('progressBar').style.width = `${progress}%`;
-                    document.getElementById('progressPercent').textContent = `${Math.round(progress)}%`;
+                    document.getElementById('progressPercent').textContent = `${progress}%`;
                 }, 500);
 
-                // Check completion
-                const check = setInterval(async () => {
-                    try {
-                        const res = await fetch(`${API_URL}/api/file/${data.filename}`, {method: 'HEAD'});
-                        if (res.ok) {
-                            clearInterval(check);
-                            clearInterval(interval);
-                            finishDownload(data);
-                        }
-                    } catch(e) {}
-                }, 1000);
-
                 setTimeout(() => {
-                    clearInterval(check);
+                    clearInterval(interval);
                     finishDownload(data);
-                }, 60000);
+                }, 5000);
 
             } catch (error) {
-                showError(error.message || 'ডাউনলোড ব্যর্থ');
+                showError('ডাউনলোড ব্যর্থ: ' + error.message);
                 resetButton();
             }
         }
@@ -421,7 +411,6 @@
             btn.innerHTML = `<i class="fas fa-download"></i><span>ডাউনলোড শুরু করুন</span>`;
         }
 
-        // Enter key support
         document.getElementById('videoUrl').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') analyzeVideo();
         });
